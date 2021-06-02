@@ -6,11 +6,10 @@ import (
 
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/user"
-	"github.com/forum-api-back/pkg/tools/http_utils"
 	"github.com/forum-api-back/pkg/errors"
+	"github.com/forum-api-back/pkg/tools/http_utils"
 
 	"github.com/valyala/fasthttp"
-	"github.com/fasthttp/router"
 )
 
 type UserHandler struct {
@@ -21,12 +20,6 @@ func NewHandler(userUCase user.UseCase) user.Handler {
 	return &UserHandler{
 		UserUCase: userUCase,
 	}
-}
-
-func (h *UserHandler) InitHandler(r *router.Router) {
-	r.POST("/api/user/{nickname}/create", h.CreateNewUser)
-	r.GET("/api/user/{nickname}/profile", h.GetUserProfile)
-	r.POST("/api/user/{nickname}/profile", h.UpdateUserProfile)
 }
 
 func (h *UserHandler) CreateNewUser(ctx *fasthttp.RequestCtx) {
@@ -41,14 +34,56 @@ func (h *UserHandler) CreateNewUser(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	err := h.UserUCase
-
+	newUser, err := h.UserUCase.CreateNewUser(userInfo)
+	switch err {
+	case nil:
+		http_utils.SetJSONResponse(ctx, newUser, http.StatusCreated)
+	case errors.ErrDataConflict:
+		http_utils.SetJSONResponse(ctx, newUser, http.StatusConflict)
+	default:
+		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
+	}
 }
 
 func (h *UserHandler) GetUserProfile(ctx *fasthttp.RequestCtx) {
+	userNickName := ctx.UserValue("nickname").(string)
+	if userNickName == "" {
+		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
+		return
+	}
 
+	selectedUser, err := h.UserUCase.GetUserByNickName(userNickName)
+	switch err {
+	case nil:
+		http_utils.SetJSONResponse(ctx, selectedUser, http.StatusOK)
+	case errors.ErrUserNotFound:
+		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
+	default:
+		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
+	}
 }
 
 func (h *UserHandler) UpdateUserProfile(ctx *fasthttp.RequestCtx) {
+	userInfo := &models.User{}
+	if err := json.Unmarshal(ctx.PostBody(), userInfo); err != nil {
+		http_utils.SetJSONResponse(ctx, errors.ErrBadRequest, http.StatusBadRequest)
+		return
+	}
 
+	if userInfo.NickName = ctx.UserValue("nickname").(string); userInfo.NickName == "" {
+		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
+		return
+	}
+
+	updatedUser, err := h.UserUCase.SetUserProfile(userInfo)
+	switch err {
+	case nil:
+		http_utils.SetJSONResponse(ctx, updatedUser, http.StatusOK)
+	case errors.ErrUserNotFound:
+		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
+	case errors.ErrDataConflict:
+		http_utils.SetJSONResponse(ctx, errors.ErrDataConflict, http.StatusConflict)
+	default:
+		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
+	}
 }

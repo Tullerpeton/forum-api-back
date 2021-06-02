@@ -1,6 +1,8 @@
+CREATE EXTENSION IF NOT EXISTS citext;
+
 CREATE UNLOGGED TABLE users (
     id SERIAL NOT NULL PRIMARY KEY,
-    nickname TEXT NOT NULL,
+    nickname CITEXT NOT NULL,
     fullname TEXT NOT NULL,
     about TEXT,
     email TEXT NOT NULL,
