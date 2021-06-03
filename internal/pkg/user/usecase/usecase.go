@@ -46,7 +46,7 @@ func (u *UserUseCase) SetUserProfile(userInfo *models.User) (*models.User, error
 	switch err {
 	case nil:
 		return userInfo, nil
-	case errors.ErrUserNotFound:
+	case errors.ErrNotFoundInDB:
 		return nil, errors.ErrUserNotFound
 	case errors.ErrDataConflict:
 		return nil, errors.ErrDataConflict

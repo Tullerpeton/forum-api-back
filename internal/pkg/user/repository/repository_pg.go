@@ -94,14 +94,18 @@ func (r *PostgresqlRepository) SelectUserByNickName(nickname string) (*models.Us
 
 func (r *PostgresqlRepository) UpdateUserProfile(userInfo *models.User) error {
 	row := r.db.QueryRow(
-		"SELECT id " +
+		"SELECT email " +
 			"FROM users " +
 			"WHERE nickname = $1",
+			userInfo.NickName,
 	)
-	var id uint64
-	err := row.Scan(&id)
+	var email string
+	err := row.Scan(&email)
 	if err != nil {
-		return errors.ErrUserNotFound
+		return errors.ErrNotFoundInDB
+	}
+	if email == userInfo.Email {
+		return errors.ErrDataConflict
 	}
 
 	_, err = r.db.Exec(
@@ -109,19 +113,16 @@ func (r *PostgresqlRepository) UpdateUserProfile(userInfo *models.User) error {
 			"email = $1, "+
 			"fullname = $2, "+
 			"about = $3 "+
-			"WHERE id = $4",
+			"WHERE nickname = $4",
 		userInfo.Email,
 		userInfo.FullName,
 		userInfo.About,
-		id,
+		userInfo.NickName,
 	)
 
-	switch err {
-	case nil:
-		return nil
-	case sql.ErrNoRows:
+	if err != nil {
 		return errors.ErrDataConflict
-	default:
-		return errors.ErrInternalError
 	}
+
+	return nil
 }

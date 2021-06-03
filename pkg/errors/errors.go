@@ -39,4 +39,7 @@ var (
 	ErrUserNotFound error = Error{
 		Message: "user not found",
 	}
+	ErrForumNotFound error = Error{
+		Message: "forum not found",
+	}
 )
