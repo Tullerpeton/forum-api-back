@@ -100,9 +100,15 @@ func (u *ThreadUseCase) UpdateThreadVote(threadSlugOrId string,
 
 	var updatedThread *models.Thread
 	if err != nil {
-		updatedThread, err = u.ThreadRepo.UpdateThreadVoteBySlug(threadSlugOrId, threadVote)
+		if err = u.ThreadRepo.UpdateThreadVoteBySlug(threadSlugOrId, threadVote); err != nil {
+			return nil, errors.ErrThreadNotFound
+		}
+		updatedThread, err = u.ThreadRepo.SelectThreadBySlug(threadSlugOrId)
 	} else if threadId >= 1 {
-		updatedThread, err = u.ThreadRepo.UpdateThreadVoteById(uint64(threadId), threadVote)
+		if err = u.ThreadRepo.UpdateThreadVoteById(uint64(threadId), threadVote); err != nil {
+			return nil, errors.ErrThreadNotFound
+		}
+		updatedThread, err = u.ThreadRepo.SelectThreadById(uint64(threadId))
 	} else {
 		return nil, errors.ErrThreadNotFound
 	}

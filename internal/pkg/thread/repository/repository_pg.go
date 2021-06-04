@@ -222,11 +222,47 @@ func (r *PostgresqlRepository) UpdateThreadDetailsById(threadId uint64,
 }
 
 func (r *PostgresqlRepository) UpdateThreadVoteBySlug(threadSlug string,
-	threadVote *models.ThreadVote) (*models.Thread, error) {
+	threadVote *models.ThreadVote) error {
+	_, err := r.db.Exec(
+		"WITH thread_info AS ( " +
+			"	SELECT thread_id" +
+			"	FROM threads " +
+			" 	WHERE slug = $3 " +
+			") " +
+			"INSERT INTO votes (vote, author_nickname, thread_id) " +
+			"SELECT $1, $2, thread_info.id " +
+			"FROM thread_info "+
+			"ON CONFLICT (thread_id, author_nickname) " +
+			"DO UPDATE SET " +
+			"vote = $1",
+			threadVote.Voice,
+			threadVote.NickName,
+			threadSlug,
+	)
 
+	if err != nil {
+		return errors.ErrDataConflict
+	}
+
+	return nil
 }
 
 func (r *PostgresqlRepository) UpdateThreadVoteById(threadId uint64,
-	threadVote *models.ThreadVote) (*models.Thread, error) {
+	threadVote *models.ThreadVote) error {
+	_, err := r.db.Exec(
+			"INSERT INTO votes (vote, author_nickname, thread_id) " +
+			"VALUES ($1, $2, $3) "+
+			"ON CONFLICT (thread_id, author_nickname) " +
+			"DO UPDATE SET " +
+			"vote = $1",
+		threadVote.Voice,
+		threadVote.NickName,
+		threadId,
+	)
 
+	if err != nil {
+		return errors.ErrDataConflict
+	}
+
+	return nil
 }

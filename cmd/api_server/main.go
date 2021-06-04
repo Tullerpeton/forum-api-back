@@ -2,15 +2,17 @@ package main
 
 import (
 	"database/sql"
+	"log"
+
 	forum_delivery "github.com/forum-api-back/internal/pkg/forum/handler"
 	forum_repo "github.com/forum-api-back/internal/pkg/forum/repository"
 	forum_usecase "github.com/forum-api-back/internal/pkg/forum/usecase"
-	"log"
-
-	"github.com/fasthttp/router"
 	user_delivery "github.com/forum-api-back/internal/pkg/user/handler"
 	user_repo "github.com/forum-api-back/internal/pkg/user/repository"
 	user_usecase "github.com/forum-api-back/internal/pkg/user/usecase"
+
+	"github.com/fasthttp/router"
+	_ "github.com/lib/pq"
 	"github.com/valyala/fasthttp"
 )
 
@@ -18,9 +20,9 @@ func main() {
 	// Connect to postgreSql db
 	postgreSqlConn, err := sql.Open(
 		"postgres",
-		"user=docker "+
-			"password=docker "+
-			"dbname=docker "+
+		"user=test "+
+			"password=test "+
+			"dbname=forum_db "+
 			"host=localhost "+
 			"port=5432 ",
 	)

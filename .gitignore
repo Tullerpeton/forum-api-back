@@ -1,5 +1,6 @@
 # My files
 .idea
+.build
 go.sum
 
 # Binaries for programs and plugins
