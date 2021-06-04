@@ -27,7 +27,7 @@ CREATE UNLOGGED TABLE threads (
     forum_slug TEXT NOT NULL,
     message TEXT NOT NULL,
 
-    date_created IMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    date_created TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
     FOREIGN KEY (author_nickname) REFERENCES users(nickname),
     FOREIGN KEY (forum_slug) REFERENCES forums(slug),
@@ -35,24 +35,24 @@ CREATE UNLOGGED TABLE threads (
     CONSTRAINT slug_unique UNIQUE (slug)
 );
 
-CREATE UNLOGGED TABLE posts (
-    id SERIAL NOT NULL PRIMARY KEY,
-    parent_message_id INTEGER NOT NULL,
-    author_nickname CITEXT NOT NULL,
-    message TEXT NOT NULL,
-    is_edited BOOLEAN NOT NULL DEFAULT FALSE,
-    forum_slug TEXT NOT NULL,
-    thread_id INTEGER NOT NULL,
-    date_created IMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-
-    FOREIGN KEY (author_nickname) REFERENCES users(nickname),
-    FOREIGN KEY (forum_slug) REFERENCES forums(slug),
-    FOREIGN KEY (thread_id) REFERENCES threads(id)
-);
+-- CREATE UNLOGGED TABLE posts (
+--     id SERIAL NOT NULL PRIMARY KEY,
+--     parent_message_id INTEGER NOT NULL,
+--     author_nickname CITEXT NOT NULL,
+--     message TEXT NOT NULL,
+--     is_edited BOOLEAN NOT NULL DEFAULT FALSE,
+--     forum_slug TEXT NOT NULL,
+--     thread_id INTEGER NOT NULL,
+--     date_created TIMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+--
+--     FOREIGN KEY (author_nickname) REFERENCES users(nickname),
+--     FOREIGN KEY (forum_slug) REFERENCES forums(slug),
+--     FOREIGN KEY (thread_id) REFERENCES threads(id)
+-- );
 
 CREATE UNLOGGED TABLE votes (
     vote INTEGER NOT NULL,
-    author_nickname TEXT NOT NULL,
+    author_nickname CITEXT NOT NULL,
     thread_id INTEGER NOT NULL,
 
     CONSTRAINT vote_unique UNIQUE (thread_id, author_nickname),
@@ -66,26 +66,26 @@ CREATE UNLOGGED TABLE votes (
 CREATE FUNCTION inc_posts_counter() RETURNS TRIGGER AS $$
 BEGIN
 UPDATE forums SET
-    count_posts = count_posts + 1;
-WHERE slug = NEW.forum_slug;
+    count_posts = count_posts + 1
+    WHERE slug = NEW.forum_slug;
 RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_inc_posts_counter
-    AFTER INSERT
-    ON posts
-    FOR EACH ROW
-    EXECUTE PROCEDURE inc_posts_counter();
-
-CREATE FUNCTION inc_threads_counter() RETURNS TRIGGER AS $$
-BEGIN
-UPDATE forums SET
-    count_threads = count_threads + 1;
-WHERE slug = NEW.forum_slug;
-RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
+-- CREATE TRIGGER trigger_inc_posts_counter
+--     AFTER INSERT
+--     ON posts
+--     FOR EACH ROW
+--     EXECUTE PROCEDURE inc_posts_counter();
+--
+-- CREATE FUNCTION inc_threads_counter() RETURNS TRIGGER AS $$
+-- BEGIN
+-- UPDATE forums SET
+--     count_threads = count_threads + 1
+--     WHERE slug = NEW.forum_slug;
+-- RETURN NULL;
+-- END;
+-- $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_inc_threads_counter
     AFTER INSERT
