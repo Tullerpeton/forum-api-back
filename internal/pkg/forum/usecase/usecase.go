@@ -9,13 +9,13 @@ import (
 
 type ForumUseCase struct {
 	ForumRepo forum.Repository
-	UserRepo user.Repository
+	UserRepo  user.Repository
 }
 
 func NewUseCase(forumRepo forum.Repository, userRepo user.Repository) forum.UseCase {
 	return &ForumUseCase{
 		ForumRepo: forumRepo,
-		UserRepo: userRepo,
+		UserRepo:  userRepo,
 	}
 }
 
@@ -37,7 +37,7 @@ func (u *ForumUseCase) CreateNewForum(forumInfo *models.ForumCreate) (*models.Fo
 		if err != nil {
 			return nil, errors.ErrInternalError
 		}
-		return selectedForum, errors.ErrDataConflict
+		return selectedForum, errors.ErrAlreadyExists
 	default:
 		return nil, errors.ErrInternalError
 	}
@@ -51,5 +51,3 @@ func (u *ForumUseCase) GetForumDetails(forumSlug string) (*models.Forum, error) 
 
 	return selectedForum, nil
 }
-
-

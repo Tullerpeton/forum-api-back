@@ -21,15 +21,16 @@ CREATE UNLOGGED TABLE forums (
 
 CREATE UNLOGGED TABLE threads (
     id SERIAL NOT NULL PRIMARY KEY,
+    slug TEXT,
     title TEXT NOT NULL,
-    author_id INTEGER  NOT NULL,
-    forum_id INTEGER NOT NULL,
+    author_nickname CITEXT NOT NULL,
+    forum_slug TEXT NOT NULL,
     message TEXT NOT NULL,
-    slug TEXT NOT NULL,
+
     date_created IMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-    FOREIGN KEY (author_id) REFERENCES users(id),
-    FOREIGN KEY (forum_id) REFERENCES forums(id),
+    FOREIGN KEY (author_nickname) REFERENCES users(nickname),
+    FOREIGN KEY (forum_slug) REFERENCES forums(slug),
 
     CONSTRAINT slug_unique UNIQUE (slug)
 );
@@ -37,24 +38,27 @@ CREATE UNLOGGED TABLE threads (
 CREATE UNLOGGED TABLE posts (
     id SERIAL NOT NULL PRIMARY KEY,
     parent_message_id INTEGER NOT NULL,
-    author_id INTEGER  NOT NULL,
+    author_nickname CITEXT NOT NULL,
     message TEXT NOT NULL,
     is_edited BOOLEAN NOT NULL DEFAULT FALSE,
-    forum_id INTEGER NOT NULL,
+    forum_slug TEXT NOT NULL,
     thread_id INTEGER NOT NULL,
     date_created IMESTAMP(3) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
 
-    FOREIGN KEY (author_id) REFERENCES users(id),
-    FOREIGN KEY (forum_id) REFERENCES forums(id),
+    FOREIGN KEY (author_nickname) REFERENCES users(nickname),
+    FOREIGN KEY (forum_slug) REFERENCES forums(slug),
     FOREIGN KEY (thread_id) REFERENCES threads(id)
 );
 
 CREATE UNLOGGED TABLE votes (
     vote INTEGER NOT NULL,
-    author_id INTEGER  NOT NULL,
+    author_nickname TEXT NOT NULL,
     thread_id INTEGER NOT NULL,
 
-    CONSTRAINT vote_unique UNIQUE (thread_id, author_id)
+    CONSTRAINT vote_unique UNIQUE (thread_id, author_nickname),
+
+    FOREIGN KEY (author_nickname) REFERENCES users(nickname),
+    FOREIGN KEY (thread_id) REFERENCES threads(id)
 );
 
 

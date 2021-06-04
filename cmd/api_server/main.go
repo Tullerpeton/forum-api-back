@@ -43,6 +43,7 @@ func main() {
 	mainRouter := router.New()
 	mainRouter.POST("/api/forum/{slug}/create", forumHandler.CreateNewForum)
 	mainRouter.GET("/api/forum/{slug}/details", forumHandler.GetForumDetails)
+	mainRouter.GET("/api/forum/{slug}/users", userHandler.GetUsersByForum)
 	mainRouter.POST("/api/user/{nickname}/create", userHandler.CreateNewUser)
 	mainRouter.GET("/api/user/{nickname}/profile", userHandler.GetUserProfile)
 	mainRouter.POST("/api/user/{nickname}/profile", userHandler.UpdateUserProfile)

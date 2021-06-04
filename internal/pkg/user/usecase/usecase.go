@@ -26,7 +26,7 @@ func (u *UserUseCase) CreateNewUser(userInfo *models.User) (*models.User, error)
 		if err != nil {
 			return nil, errors.ErrInternalError
 		}
-		return selectedUser, errors.ErrDataConflict
+		return selectedUser, errors.ErrAlreadyExists
 	default:
 		return nil, errors.ErrInternalError
 	}
@@ -38,7 +38,20 @@ func (u *UserUseCase) GetUserByNickName(userNickName string) (*models.User, erro
 		return nil, errors.ErrUserNotFound
 	}
 
-	return selectedUser, err
+	return selectedUser, nil
+}
+
+func (u *UserUseCase) GetUsersByForum(forumSlug string) ([]*models.User, error) {
+	selectedUsers, err := u.UserRepo.SelectUsersByForum(forumSlug)
+
+	switch err {
+	case nil:
+		return selectedUsers, nil
+	case errors.ErrNotFoundInDB:
+		return nil, errors.ErrUserNotFound
+	default:
+		return nil, errors.ErrInternalError
+	}
 }
 
 func (u *UserUseCase) SetUserProfile(userInfo *models.User) (*models.User, error) {
@@ -49,7 +62,7 @@ func (u *UserUseCase) SetUserProfile(userInfo *models.User) (*models.User, error
 	case errors.ErrNotFoundInDB:
 		return nil, errors.ErrUserNotFound
 	case errors.ErrDataConflict:
-		return nil, errors.ErrDataConflict
+		return nil, errors.ErrAlreadyExists
 	default:
 		return nil, errors.ErrInternalError
 	}

@@ -92,12 +92,48 @@ func (r *PostgresqlRepository) SelectUserByNickName(nickname string) (*models.Us
 	}
 }
 
+func (r *PostgresqlRepository) SelectUsersByForum(forumSlug string) ([]*models.User, error) {
+	rows, err := r.db.Query(
+		"SELECT nickname, fullname, about, email "+
+			"FROM users u "+
+			"JOIN threads t ON (u.nickname = t.author_nickname AND t.forum_slug = $1) "+
+			"JOIN posts p ON (u.nickname = p.author_nickname AND p.forum_slug = $1) "+
+			"GROUP BY nickname "+
+			"ORDER BY nickname",
+		forumSlug,
+	)
+
+	switch err {
+	case nil:
+		users := make([]*models.User, 0)
+		for rows.Next() {
+			selectedUser := &models.User{}
+			err := rows.Scan(
+				&selectedUser.NickName,
+				&selectedUser.FullName,
+				&selectedUser.About,
+				&selectedUser.Email,
+			)
+			if err != nil {
+				return nil, errors.ErrInternalError
+			}
+
+			users = append(users, selectedUser)
+		}
+		return users, nil
+	case sql.ErrNoRows:
+		return nil, errors.ErrNotFoundInDB
+	default:
+		return nil, errors.ErrInternalError
+	}
+}
+
 func (r *PostgresqlRepository) UpdateUserProfile(userInfo *models.User) error {
 	row := r.db.QueryRow(
-		"SELECT email " +
-			"FROM users " +
+		"SELECT email "+
+			"FROM users "+
 			"WHERE nickname = $1",
-			userInfo.NickName,
+		userInfo.NickName,
 	)
 	var email string
 	err := row.Scan(&email)

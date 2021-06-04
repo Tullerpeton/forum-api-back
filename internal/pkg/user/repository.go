@@ -6,5 +6,6 @@ type Repository interface {
 	InsertUser(userInfo *models.User) error
 	SelectUserByEmailOrNickname(email, nickname string) (*models.User, error)
 	SelectUserByNickName(nickname string) (*models.User, error)
+	SelectUsersByForum(forumSlug string) ([]*models.User, error)
 	UpdateUserProfile(userInfo *models.User) error
 }

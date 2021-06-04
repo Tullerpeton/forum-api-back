@@ -33,7 +33,9 @@ func (h *ForumHandler) CreateNewForum(ctx *fasthttp.RequestCtx) {
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, newForum, http.StatusCreated)
-	case errors.ErrDataConflict:
+	case errors.ErrUserNotFound:
+		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
+	case errors.ErrAlreadyExists:
 		http_utils.SetJSONResponse(ctx, newForum, http.StatusConflict)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)

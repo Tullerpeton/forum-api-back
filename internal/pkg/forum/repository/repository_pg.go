@@ -28,7 +28,7 @@ func (r *PostgresqlRepository) InsertForum(forumInfo *models.ForumCreate) error 
 	)
 
 	if err != nil {
-		return errors.ErrDataConflict
+		return errors.ErrAlreadyExists
 	}
 
 	return nil
@@ -39,7 +39,7 @@ func (r *PostgresqlRepository) SelectForumBySlug(forumSlug string) (*models.Foru
 		"SELECT title, author_nickname, slug, count_posts, count_threads "+
 			"FROM forums "+
 			"WHERE slug = $1",
-			forumSlug,
+		forumSlug,
 	)
 
 	selectedForum := &models.Forum{}

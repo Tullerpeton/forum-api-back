@@ -7,5 +7,6 @@ import (
 type Handler interface {
 	CreateNewUser(ctx *fasthttp.RequestCtx)
 	GetUserProfile(ctx *fasthttp.RequestCtx)
+	GetUsersByForum(ctx *fasthttp.RequestCtx)
 	UpdateUserProfile(ctx *fasthttp.RequestCtx)
 }

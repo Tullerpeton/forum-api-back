@@ -42,4 +42,10 @@ var (
 	ErrForumNotFound error = Error{
 		Message: "forum not found",
 	}
+	ErrThreadNotFound error = Error{
+		Message: "thread not found",
+	}
+	ErrAlreadyExists error = Error{
+		Message: "already exists",
+	}
 )

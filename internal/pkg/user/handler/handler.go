@@ -38,7 +38,7 @@ func (h *UserHandler) CreateNewUser(ctx *fasthttp.RequestCtx) {
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, newUser, http.StatusCreated)
-	case errors.ErrDataConflict:
+	case errors.ErrAlreadyExists:
 		http_utils.SetJSONResponse(ctx, newUser, http.StatusConflict)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
@@ -56,6 +56,24 @@ func (h *UserHandler) GetUserProfile(ctx *fasthttp.RequestCtx) {
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, selectedUser, http.StatusOK)
+	case errors.ErrUserNotFound:
+		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
+	default:
+		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
+	}
+}
+
+func (h *UserHandler) GetUsersByForum(ctx *fasthttp.RequestCtx) {
+	forumSlug := ctx.UserValue("slug").(string)
+	if forumSlug == "" {
+		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
+		return
+	}
+
+	selectedUsers, err := h.UserUCase.GetUsersByForum(forumSlug)
+	switch err {
+	case nil:
+		http_utils.SetJSONResponse(ctx, selectedUsers, http.StatusOK)
 	case errors.ErrUserNotFound:
 		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
 	default:
@@ -81,8 +99,8 @@ func (h *UserHandler) UpdateUserProfile(ctx *fasthttp.RequestCtx) {
 		http_utils.SetJSONResponse(ctx, updatedUser, http.StatusOK)
 	case errors.ErrUserNotFound:
 		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
-	case errors.ErrDataConflict:
-		http_utils.SetJSONResponse(ctx, errors.ErrDataConflict, http.StatusConflict)
+	case errors.ErrAlreadyExists:
+		http_utils.SetJSONResponse(ctx, errors.ErrAlreadyExists, http.StatusConflict)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
 	}
