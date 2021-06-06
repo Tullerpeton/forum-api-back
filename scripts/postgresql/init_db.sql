@@ -1,11 +1,3 @@
-DROP DATABASE IF EXISTS forum_db;
-CREATE DATABASE forum_db
-    WITH OWNER postgres
-    LC_COLLATE = 'C'
-    LC_CTYPE = 'en_US.utf8'
-    TEMPLATE template0;
-\connect forum_db;
-
 CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE UNLOGGED TABLE users (

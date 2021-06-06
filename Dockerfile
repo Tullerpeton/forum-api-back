@@ -18,7 +18,7 @@ USER postgres
 
 RUN  /etc/init.d/postgresql start &&\
     psql --command "CREATE USER test WITH SUPERUSER PASSWORD 'test';" &&\
-    createdb -E UTF8 forum_db &&\
+    psql --command "CREATE DATABASE forum_db WITH OWNER LC_COLLATE = 'C' LC_CTYPE = 'en_US.utf8' TEMPLATE template0;" &&\
     psql -f /scripts/postgresql/init_db.sql -d forum_db &&\
     /etc/init.d/postgresql stop
 
