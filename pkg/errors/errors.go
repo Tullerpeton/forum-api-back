@@ -5,7 +5,7 @@ import (
 )
 
 type Error struct {
-	Message string `json:"error"`
+	Message string `json:"message"`
 }
 
 func (err Error) Error() string {
@@ -45,7 +45,13 @@ var (
 	ErrThreadNotFound error = Error{
 		Message: "thread not found",
 	}
+	ErrPostNotFound error = Error{
+		Message: "post not found",
+	}
 	ErrAlreadyExists error = Error{
 		Message: "already exists",
+	}
+	ErrEmptyParameters error = Error{
+		Message: "parameters is empty",
 	}
 )

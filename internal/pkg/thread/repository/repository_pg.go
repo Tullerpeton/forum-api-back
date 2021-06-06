@@ -2,6 +2,8 @@ package repository
 
 import (
 	"database/sql"
+	"fmt"
+	"strings"
 
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/thread"
@@ -28,7 +30,7 @@ func (r *PostgresqlRepository) InsertThread(forumSlug string,
 	row := r.db.QueryRow(
 		"INSERT INTO threads(slug, title, author_nickname, "+
 			"	forum_slug, message, date_created) "+
-			"VALUES ($1, $2, $3, $4) "+
+			"VALUES ($1, $2, $3, $4, $5, $6) "+
 			"RETURNING id",
 		slug,
 		threadInfo.Title,
@@ -49,7 +51,7 @@ func (r *PostgresqlRepository) InsertThread(forumSlug string,
 func (r *PostgresqlRepository) SelectThreadBySlug(threadSlug string) (*models.Thread, error) {
 	row := r.db.QueryRow(
 		"SELECT id, slug, title, author_nickname, "+
-			"forum_slug, message, date_created "+
+			"forum_slug, message, date_created, votes "+
 			"FROM threads "+
 			"WHERE slug = $1",
 		threadSlug,
@@ -61,10 +63,11 @@ func (r *PostgresqlRepository) SelectThreadBySlug(threadSlug string) (*models.Th
 		&selectedThread.Id,
 		&slug,
 		&selectedThread.Title,
-		&selectedThread.Author,
+		&selectedThread.AuthorNickName,
 		&selectedThread.Forum,
 		&selectedThread.Message,
 		&selectedThread.DateCreated,
+		&selectedThread.Votes,
 	)
 	selectedThread.Slug = slug.String
 
@@ -78,7 +81,7 @@ func (r *PostgresqlRepository) SelectThreadBySlug(threadSlug string) (*models.Th
 func (r *PostgresqlRepository) SelectThreadById(threadId uint64) (*models.Thread, error) {
 	row := r.db.QueryRow(
 		"SELECT id, slug, title, author_nickname, "+
-			"forum_slug, message, date_created "+
+			"forum_slug, message, date_created, votes "+
 			"FROM threads "+
 			"WHERE id = $1",
 		threadId,
@@ -90,10 +93,11 @@ func (r *PostgresqlRepository) SelectThreadById(threadId uint64) (*models.Thread
 		&selectedThread.Id,
 		&slug,
 		&selectedThread.Title,
-		&selectedThread.Author,
+		&selectedThread.AuthorNickName,
 		&selectedThread.Forum,
 		&selectedThread.Message,
 		&selectedThread.DateCreated,
+		&selectedThread.Votes,
 	)
 	selectedThread.Slug = slug.String
 
@@ -106,29 +110,47 @@ func (r *PostgresqlRepository) SelectThreadById(threadId uint64) (*models.Thread
 
 func (r *PostgresqlRepository) SelectThreadsByForum(forumSlug string,
 	threadPaginator *models.ThreadPaginator) ([]*models.Thread, error) {
-	var orderSort string
+	var orderSort, orderCompare string
 	if threadPaginator.SortOrder {
 		orderSort = " DESC "
+		orderCompare = " <= "
 	} else {
 		orderSort = " ASC "
+		orderCompare = " >= "
 	}
 
-	rows, err := r.db.Query(
-		"SELECT id, slug, title, author_nickname, "+
-			"forum_slug, message, date_created "+
-			"FROM threads "+
-			"WHERE (forum_slug = $1 "+
-			"date_created <= $2) "+
-			"ORDER BY date_created "+orderSort+
-			"LIMIT $3",
-		forumSlug,
-		threadPaginator.Since,
-		threadPaginator.Limit,
-	)
+	var rows *sql.Rows
+	var err error
+	if threadPaginator.Since.IsZero() {
+		rows, err = r.db.Query(
+			"SELECT id, slug, title, author_nickname, "+
+				"forum_slug, message, date_created, votes "+
+				"FROM threads "+
+				"WHERE forum_slug = $1 "+
+				"ORDER BY date_created "+orderSort+
+				"LIMIT $2",
+			forumSlug,
+			threadPaginator.Limit,
+		)
+	} else {
+		rows, err = r.db.Query(
+			"SELECT id, slug, title, author_nickname, "+
+				"forum_slug, message, date_created, votes "+
+				"FROM threads "+
+				"WHERE (forum_slug = $1 AND "+
+				"date_created"+orderCompare+"$2) "+
+				"ORDER BY date_created "+orderSort+
+				"LIMIT $3",
+			forumSlug,
+			threadPaginator.Since,
+			threadPaginator.Limit,
+		)
+	}
 
 	if err != nil {
 		return nil, errors.ErrThreadNotFound
 	}
+	defer rows.Close()
 
 	threads := make([]*models.Thread, 0)
 	for rows.Next() {
@@ -138,10 +160,11 @@ func (r *PostgresqlRepository) SelectThreadsByForum(forumSlug string,
 			&selectedThread.Id,
 			&slug,
 			&selectedThread.Title,
-			&selectedThread.Author,
+			&selectedThread.AuthorNickName,
 			&selectedThread.Forum,
 			&selectedThread.Message,
 			&selectedThread.DateCreated,
+			&selectedThread.Votes,
 		)
 		selectedThread.Slug = slug.String
 		if err != nil {
@@ -150,21 +173,35 @@ func (r *PostgresqlRepository) SelectThreadsByForum(forumSlug string,
 
 		threads = append(threads, selectedThread)
 	}
+
 	return threads, nil
 }
 
 func (r *PostgresqlRepository) UpdateThreadDetailsBySlug(threadSlug string,
 	threadInfo *models.ThreadUpdate) (*models.Thread, error) {
+	columns := make([]string, 0)
+	args := make([]interface{}, 1)
+	args[0] = threadSlug
+	if threadInfo.Title != "" {
+		args = append(args, threadInfo.Title)
+		columns = append(columns, fmt.Sprintf("title = $%d ", len(args)))
+	}
+	if threadInfo.Message != "" {
+		args = append(args, threadInfo.Message)
+		columns = append(columns, fmt.Sprintf("message = $%d ", len(args)))
+	}
+
+	if len(args) == 1 {
+		return nil, errors.ErrEmptyParameters
+	}
+
 	row := r.db.QueryRow(
 		"UPDATE threads SET "+
-			"title = $1, "+
-			"Message = $2 "+
-			"WHERE slug = $3 "+
+			strings.Join(columns, ", ")+
+			" WHERE slug = $1 "+
 			"RETURNING id, slug, title, author_nickname, "+
 			"	forum_slug, message, date_created",
-		threadInfo.Title,
-		threadInfo.Message,
-		threadSlug,
+		args...,
 	)
 
 	updatedThread := &models.Thread{}
@@ -173,7 +210,7 @@ func (r *PostgresqlRepository) UpdateThreadDetailsBySlug(threadSlug string,
 		&updatedThread.Id,
 		&slug,
 		&updatedThread.Title,
-		&updatedThread.Author,
+		&updatedThread.AuthorNickName,
 		&updatedThread.Forum,
 		&updatedThread.Message,
 		&updatedThread.DateCreated,
@@ -189,16 +226,30 @@ func (r *PostgresqlRepository) UpdateThreadDetailsBySlug(threadSlug string,
 
 func (r *PostgresqlRepository) UpdateThreadDetailsById(threadId uint64,
 	threadInfo *models.ThreadUpdate) (*models.Thread, error) {
+
+	columns := make([]string, 0)
+	args := make([]interface{}, 1)
+	args[0] = threadId
+	if threadInfo.Title != "" {
+		args = append(args, threadInfo.Title)
+		columns = append(columns, fmt.Sprintf("title = $%d ", len(args)))
+	}
+	if threadInfo.Message != "" {
+		args = append(args, threadInfo.Message)
+		columns = append(columns, fmt.Sprintf("message = $%d ", len(args)))
+	}
+
+	if len(args) == 1 {
+		return nil, errors.ErrEmptyParameters
+	}
+
 	row := r.db.QueryRow(
 		"UPDATE threads SET "+
-			"title = $1, "+
-			"Message = $2 "+
-			"WHERE id = $3 "+
+			strings.Join(columns, ", ")+
+			" WHERE id = $1 "+
 			"RETURNING id, slug, title, author_nickname, "+
 			"	forum_slug, message, date_created",
-		threadInfo.Title,
-		threadInfo.Message,
-		threadId,
+		args...,
 	)
 
 	updatedThread := &models.Thread{}
@@ -207,7 +258,7 @@ func (r *PostgresqlRepository) UpdateThreadDetailsById(threadId uint64,
 		&updatedThread.Id,
 		&slug,
 		&updatedThread.Title,
-		&updatedThread.Author,
+		&updatedThread.AuthorNickName,
 		&updatedThread.Forum,
 		&updatedThread.Message,
 		&updatedThread.DateCreated,
@@ -224,20 +275,20 @@ func (r *PostgresqlRepository) UpdateThreadDetailsById(threadId uint64,
 func (r *PostgresqlRepository) UpdateThreadVoteBySlug(threadSlug string,
 	threadVote *models.ThreadVote) error {
 	_, err := r.db.Exec(
-		"WITH thread_info AS ( " +
-			"	SELECT thread_id" +
-			"	FROM threads " +
-			" 	WHERE slug = $3 " +
-			") " +
-			"INSERT INTO votes (vote, author_nickname, thread_id) " +
-			"SELECT $1, $2, thread_info.id " +
+		"WITH thread_info AS ( "+
+			"	SELECT id"+
+			"	FROM threads "+
+			" 	WHERE slug = $3 "+
+			") "+
+			"INSERT INTO votes (vote, author_nickname, thread_id) "+
+			"SELECT $1, $2, thread_info.id "+
 			"FROM thread_info "+
-			"ON CONFLICT (thread_id, author_nickname) " +
-			"DO UPDATE SET " +
+			"ON CONFLICT (thread_id, author_nickname) "+
+			"DO UPDATE SET "+
 			"vote = $1",
-			threadVote.Voice,
-			threadVote.NickName,
-			threadSlug,
+		threadVote.Voice,
+		threadVote.NickName,
+		threadSlug,
 	)
 
 	if err != nil {
@@ -250,10 +301,10 @@ func (r *PostgresqlRepository) UpdateThreadVoteBySlug(threadSlug string,
 func (r *PostgresqlRepository) UpdateThreadVoteById(threadId uint64,
 	threadVote *models.ThreadVote) error {
 	_, err := r.db.Exec(
-			"INSERT INTO votes (vote, author_nickname, thread_id) " +
+		"INSERT INTO votes (vote, author_nickname, thread_id) "+
 			"VALUES ($1, $2, $3) "+
-			"ON CONFLICT (thread_id, author_nickname) " +
-			"DO UPDATE SET " +
+			"ON CONFLICT (thread_id, author_nickname) "+
+			"DO UPDATE SET "+
 			"vote = $1",
 		threadVote.Voice,
 		threadVote.NickName,

@@ -28,7 +28,7 @@ func (r *PostgresqlRepository) InsertForum(forumInfo *models.ForumCreate) error 
 	)
 
 	if err != nil {
-		return errors.ErrAlreadyExists
+		return errors.ErrDataConflict
 	}
 
 	return nil

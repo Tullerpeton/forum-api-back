@@ -2,7 +2,9 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/user"
@@ -37,7 +39,7 @@ func (h *UserHandler) CreateNewUser(ctx *fasthttp.RequestCtx) {
 	newUser, err := h.UserUCase.CreateNewUser(userInfo)
 	switch err {
 	case nil:
-		http_utils.SetJSONResponse(ctx, newUser, http.StatusCreated)
+		http_utils.SetJSONResponse(ctx, newUser[0], http.StatusCreated)
 	case errors.ErrAlreadyExists:
 		http_utils.SetJSONResponse(ctx, newUser, http.StatusConflict)
 	default:
@@ -70,12 +72,24 @@ func (h *UserHandler) GetUsersByForum(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	selectedUsers, err := h.UserUCase.GetUsersByForum(forumSlug)
+	userPaginator := &models.UserPaginator{Limit: 100}
+	userPaginator.Since = string(ctx.FormValue("since"))
+
+	if isDesc := string(ctx.FormValue("desc")); isDesc == "true" {
+		userPaginator.SortOrder = true
+	}
+
+	parseLimit, err := strconv.Atoi(string(ctx.FormValue("limit")))
+	if err == nil {
+		userPaginator.Limit = uint64(parseLimit)
+	}
+
+	selectedUsers, err := h.UserUCase.GetUsersByForum(forumSlug, userPaginator)
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, selectedUsers, http.StatusOK)
-	case errors.ErrUserNotFound:
-		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
+	case errors.ErrForumNotFound:
+		http_utils.SetJSONResponse(ctx, errors.Error{Message: fmt.Sprintf("Can't find forum by slug: %s", forumSlug)}, http.StatusNotFound)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
 	}

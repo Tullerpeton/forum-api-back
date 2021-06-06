@@ -20,11 +20,13 @@ func NewUseCase(forumRepo forum.Repository, userRepo user.Repository) forum.UseC
 }
 
 func (u *ForumUseCase) CreateNewForum(forumInfo *models.ForumCreate) (*models.Forum, error) {
-	if _, err := u.UserRepo.SelectUserByNickName(forumInfo.AuthorNickName); err != nil {
+	author, err := u.UserRepo.SelectUserByNickName(forumInfo.AuthorNickName)
+	if err != nil {
 		return nil, errors.ErrUserNotFound
 	}
+	forumInfo.AuthorNickName = author.NickName
 
-	err := u.ForumRepo.InsertForum(forumInfo)
+	err = u.ForumRepo.InsertForum(forumInfo)
 	switch err {
 	case nil:
 		return &models.Forum{

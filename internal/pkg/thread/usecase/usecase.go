@@ -3,6 +3,7 @@ package usecase
 import (
 	"strconv"
 
+	"github.com/forum-api-back/internal/pkg/forum"
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/thread"
 	"github.com/forum-api-back/pkg/errors"
@@ -10,27 +11,34 @@ import (
 
 type ThreadUseCase struct {
 	ThreadRepo thread.Repository
+	ForumRepo  forum.Repository
 }
 
-func NewUseCase(threadRepo thread.Repository) thread.UseCase {
+func NewUseCase(threadRepo thread.Repository, forumRepo forum.Repository) thread.UseCase {
 	return &ThreadUseCase{
 		ThreadRepo: threadRepo,
+		ForumRepo:  forumRepo,
 	}
 }
 
 func (u *ThreadUseCase) CreateNewThread(forumSlug string,
 	threadInfo *models.ThreadCreate) (*models.Thread, error) {
-	threadId, err := u.ThreadRepo.InsertThread(forumSlug, threadInfo)
+	selectedForum, err := u.ForumRepo.SelectForumBySlug(forumSlug)
+	if err != nil {
+		return nil, errors.ErrDataConflict
+	}
+
+	threadId, err := u.ThreadRepo.InsertThread(selectedForum.Slug, threadInfo)
 	switch err {
 	case nil:
 		return &models.Thread{
-			Id:          threadId,
-			Title:       threadInfo.Title,
-			Author:      threadInfo.AuthorNickName,
-			Forum:       forumSlug,
-			Message:     threadInfo.Message,
-			Slug:        threadInfo.Slug,
-			DateCreated: threadInfo.DateCreated,
+			Id:             threadId,
+			Title:          threadInfo.Title,
+			AuthorNickName: threadInfo.AuthorNickName,
+			Forum:          selectedForum.Slug,
+			Message:        threadInfo.Message,
+			Slug:           threadInfo.Slug,
+			DateCreated:    threadInfo.DateCreated,
 		}, nil
 	case errors.ErrDataConflict:
 		if threadInfo.Slug != "" {
@@ -47,9 +55,13 @@ func (u *ThreadUseCase) CreateNewThread(forumSlug string,
 
 func (u *ThreadUseCase) GetThreadsByForum(forumSlug string,
 	threadPaginator *models.ThreadPaginator) ([]*models.Thread, error) {
+	if _, err := u.ForumRepo.SelectForumBySlug(forumSlug); err != nil {
+		return nil, errors.ErrForumNotFound
+	}
+
 	threads, err := u.ThreadRepo.SelectThreadsByForum(forumSlug, threadPaginator)
 	if err != nil {
-		return nil, errors.ErrForumNotFound
+		return nil, errors.ErrInternalError
 	}
 
 	return threads, nil
@@ -81,8 +93,14 @@ func (u *ThreadUseCase) UpdateThreadDetails(threadSlugOrId string,
 	var updatedThread *models.Thread
 	if err != nil {
 		updatedThread, err = u.ThreadRepo.UpdateThreadDetailsBySlug(threadSlugOrId, threadInfo)
+		if err == errors.ErrEmptyParameters {
+			updatedThread, err = u.ThreadRepo.SelectThreadBySlug(threadSlugOrId)
+		}
 	} else if threadId >= 1 {
 		updatedThread, err = u.ThreadRepo.UpdateThreadDetailsById(uint64(threadId), threadInfo)
+		if err == errors.ErrEmptyParameters {
+			updatedThread, err = u.ThreadRepo.SelectThreadById(uint64(threadId))
+		}
 	} else {
 		return nil, errors.ErrThreadNotFound
 	}
@@ -90,7 +108,6 @@ func (u *ThreadUseCase) UpdateThreadDetails(threadSlugOrId string,
 	if err != nil {
 		return nil, errors.ErrThreadNotFound
 	}
-
 	return updatedThread, nil
 }
 

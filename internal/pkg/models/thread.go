@@ -4,21 +4,21 @@ import "time"
 
 type ThreadCreate struct {
 	Title          string    `json:"title"`
-	AuthorNickName string    `json:"user"`
+	AuthorNickName string    `json:"author"`
 	Message        string    `json:"message"`
 	DateCreated    time.Time `json:"created"`
 	Slug           string    `json:"slug"`
 }
 
 type Thread struct {
-	Id          uint64    `json:"id"`
-	Title       string    `json:"title"`
-	Author      string    `json:"author"`
-	Forum       string    `json:"forum"`
-	Message     string    `json:"message"`
-	Votes       string    `json:"votes"`
-	Slug        string    `json:"slug"`
-	DateCreated time.Time `json:"created"`
+	Id             uint64    `json:"id"`
+	Title          string    `json:"title"`
+	AuthorNickName string    `json:"author"`
+	Forum          string    `json:"forum"`
+	Message        string    `json:"message"`
+	Votes          int       `json:"votes"`
+	Slug           string    `json:"slug"`
+	DateCreated    time.Time `json:"created"`
 }
 
 type ThreadUpdate struct {

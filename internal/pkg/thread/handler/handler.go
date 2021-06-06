@@ -2,7 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/thread"
@@ -49,16 +52,25 @@ func (h *ThreadHandler) CreateNewThread(ctx *fasthttp.RequestCtx) {
 }
 
 func (h *ThreadHandler) GetThreadsByForum(ctx *fasthttp.RequestCtx) {
-	threadPaginator := &models.ThreadPaginator{Limit: 100}
-	if err := json.Unmarshal(ctx.PostBody(), threadPaginator); err != nil {
-		http_utils.SetJSONResponse(ctx, errors.ErrBadRequest, http.StatusBadRequest)
-		return
-	}
-
 	forumSlug := ctx.UserValue("slug").(string)
 	if forumSlug == "" {
 		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
 		return
+	}
+
+	threadPaginator := &models.ThreadPaginator{Limit: 100}
+	parseTime, err := time.Parse(time.RFC3339, string(ctx.FormValue("since")))
+	if err == nil {
+		threadPaginator.Since = parseTime
+	}
+
+	if isDesc := string(ctx.FormValue("desc")); isDesc == "true" {
+		threadPaginator.SortOrder = true
+	}
+
+	parseLimit, err := strconv.Atoi(string(ctx.FormValue("limit")))
+	if err == nil {
+		threadPaginator.Limit = uint64(parseLimit)
 	}
 
 	selectedThreads, err := h.ThreadUCase.GetThreadsByForum(forumSlug, threadPaginator)
@@ -66,7 +78,8 @@ func (h *ThreadHandler) GetThreadsByForum(ctx *fasthttp.RequestCtx) {
 	case nil:
 		http_utils.SetJSONResponse(ctx, selectedThreads, http.StatusOK)
 	case errors.ErrForumNotFound:
-		http_utils.SetJSONResponse(ctx, errors.ErrForumNotFound, http.StatusNotFound)
+		http_utils.SetJSONResponse(ctx, errors.Error{
+			Message: fmt.Sprintf("Can't find forum by slug: %s", forumSlug)}, http.StatusNotFound)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
 	}
