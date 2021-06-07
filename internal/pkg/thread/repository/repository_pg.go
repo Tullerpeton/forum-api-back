@@ -276,7 +276,7 @@ func (r *PostgresqlRepository) UpdateThreadVoteBySlug(threadSlug string,
 	threadVote *models.ThreadVote) error {
 	_, err := r.db.Exec(
 		"WITH thread_info AS ( "+
-			"	SELECT id"+
+			"	SELECT id "+
 			"	FROM threads "+
 			" 	WHERE slug = $3 "+
 			") "+

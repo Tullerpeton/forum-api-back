@@ -203,7 +203,7 @@ func (r *PostgresqlRepository) SelectPostsById(threadId uint64, paginator *model
 					"	WHERE (thread_id = $1 AND parent_message_id = 0) "+
 					"	ORDER BY id "+orderSort+
 					"	LIMIT $2"+
-					") "+
+					" ) "+
 					"ORDER BY p1.path_of_nesting[1] "+orderSort+", p1.path_of_nesting",
 				threadId,
 				paginator.Limit,

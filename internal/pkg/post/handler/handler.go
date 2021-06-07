@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
+
 	"github.com/forum-api-back/internal/pkg/models"
 	"github.com/forum-api-back/internal/pkg/post"
 	"github.com/forum-api-back/pkg/errors"
 	"github.com/forum-api-back/pkg/tools/http_utils"
-	"net/http"
-	"strconv"
 
 	"github.com/valyala/fasthttp"
 )
@@ -31,13 +32,13 @@ func (h *PostHandler) CreateNewPosts(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	forumSlug := ctx.UserValue("slug_or_id").(string)
-	if forumSlug == "" {
+	threadSlugOrId := ctx.UserValue("slug_or_id").(string)
+	if threadSlugOrId == "" {
 		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
 		return
 	}
 
-	newThreads, err := h.PostUCase.CreateNewPosts(forumSlug, postsInfo)
+	newThreads, err := h.PostUCase.CreateNewPosts(threadSlugOrId, postsInfo)
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, newThreads, http.StatusCreated)
@@ -46,7 +47,8 @@ func (h *PostHandler) CreateNewPosts(ctx *fasthttp.RequestCtx) {
 	case errors.ErrUserNotFound:
 		http_utils.SetJSONResponse(ctx, errors.ErrUserNotFound, http.StatusNotFound)
 	case errors.ErrThreadNotFound:
-		http_utils.SetJSONResponse(ctx, errors.Error{Message: fmt.Sprintf("Can't find post thread by id: %s", forumSlug)}, http.StatusNotFound)
+		http_utils.SetJSONResponse(ctx,
+			errors.Error{Message: fmt.Sprintf("Can't find post thread by id: %s", threadSlugOrId)}, http.StatusNotFound)
 	default:
 		http_utils.SetJSONResponse(ctx, errors.ErrInternalError, http.StatusInternalServerError)
 	}
@@ -79,8 +81,8 @@ func (h *PostHandler) GetPostDetails(ctx *fasthttp.RequestCtx) {
 }
 
 func (h *PostHandler) GetPostsByThread(ctx *fasthttp.RequestCtx) {
-	forumSlug := ctx.UserValue("slug_or_id").(string)
-	if forumSlug == "" {
+	threadSlugOrId := ctx.UserValue("slug_or_id").(string)
+	if threadSlugOrId == "" {
 		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
 		return
 	}
@@ -104,7 +106,7 @@ func (h *PostHandler) GetPostsByThread(ctx *fasthttp.RequestCtx) {
 		postPaginator.Sort = sort
 	}
 
-	selectedPosts, err := h.PostUCase.GetPostsByThread(forumSlug, postPaginator)
+	selectedPosts, err := h.PostUCase.GetPostsByThread(threadSlugOrId, postPaginator)
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, selectedPosts, http.StatusOK)
@@ -122,13 +124,13 @@ func (h *PostHandler) UpdatePostDetails(ctx *fasthttp.RequestCtx) {
 		return
 	}
 
-	forumSlug, err := strconv.Atoi(ctx.UserValue("id").(string))
-	if err != nil || forumSlug < 1 {
+	forumId, err := strconv.Atoi(ctx.UserValue("id").(string))
+	if err != nil || forumId < 1 {
 		http_utils.SetJSONResponse(ctx, errors.ErrBadArguments, http.StatusBadRequest)
 		return
 	}
 
-	updatedPost, err := h.PostUCase.UpdatePostDetails(uint64(forumSlug), postsInfo)
+	updatedPost, err := h.PostUCase.UpdatePostDetails(uint64(forumId), postsInfo)
 	switch err {
 	case nil:
 		http_utils.SetJSONResponse(ctx, updatedPost, http.StatusOK)

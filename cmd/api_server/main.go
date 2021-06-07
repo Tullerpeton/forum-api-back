@@ -48,23 +48,20 @@ func main() {
 
 	userRepo := user_repo.NewSessionPostgresqlRepository(postgreSqlConn)
 	forumRepo := forum_repo.NewSessionPostgresqlRepository(postgreSqlConn)
+	postRepo := post_repo.NewSessionPostgresqlRepository(postgreSqlConn)
+	threadRepo := thread_repo.NewSessionPostgresqlRepository(postgreSqlConn)
+	adminRepo := admin_repo.NewSessionPostgresqlRepository(postgreSqlConn)
 
 	userUCase := user_usecase.NewUseCase(userRepo, forumRepo)
-	userHandler := user_delivery.NewHandler(userUCase)
-
 	forumUCase := forum_usecase.NewUseCase(forumRepo, userRepo)
-	forumHandler := forum_delivery.NewHandler(forumUCase)
-
-	threadRepo := thread_repo.NewSessionPostgresqlRepository(postgreSqlConn)
-	threadUCase := thread_usecase.NewUseCase(threadRepo, forumRepo)
-	threadHandler := thread_delivery.NewHandler(threadUCase)
-
-	postRepo := post_repo.NewSessionPostgresqlRepository(postgreSqlConn)
 	postUCase := post_usecase.NewUseCase(postRepo, threadRepo, forumRepo, userRepo)
-	postHandler := post_delivery.NewHandler(postUCase)
-
-	adminRepo := admin_repo.NewSessionPostgresqlRepository(postgreSqlConn)
+	threadUCase := thread_usecase.NewUseCase(threadRepo, forumRepo)
 	adminUCase := admin_usecase.NewUseCase(adminRepo)
+
+	userHandler := user_delivery.NewHandler(userUCase)
+	forumHandler := forum_delivery.NewHandler(forumUCase)
+	postHandler := post_delivery.NewHandler(postUCase)
+	threadHandler := thread_delivery.NewHandler(threadUCase)
 	adminHandler := admin_delivery.NewHandler(adminUCase)
 
 	mainRouter := router.New()

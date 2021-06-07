@@ -11,6 +11,7 @@ CREATE UNLOGGED TABLE users (
 
 CREATE UNIQUE INDEX ON users (nickname, email);
 
+
 CREATE UNLOGGED TABLE forums (
     slug CITEXT NOT NULL PRIMARY KEY,
     title TEXT NOT NULL,
@@ -20,6 +21,7 @@ CREATE UNLOGGED TABLE forums (
 
     FOREIGN KEY (author_nickname) REFERENCES users(nickname)
 );
+
 
 CREATE UNLOGGED TABLE threads (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -39,8 +41,9 @@ CREATE UNLOGGED TABLE threads (
 );
 
 CREATE INDEX ON threads (slug) WHERE slug IS NOT NULL;
-CREATE INDEX ON threads(forum_slug, date_created);
-CREATE INDEX ON threads(date_created);
+CREATE INDEX ON threads (forum_slug, date_created);
+CREATE INDEX ON threads (date_created);
+
 
 CREATE UNLOGGED TABLE authors (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -53,7 +56,8 @@ CREATE UNLOGGED TABLE authors (
     FOREIGN KEY (forum_slug) REFERENCES forums(slug)
 );
 
-CREATE INDEX ON authors(user_nickname, forum_slug);
+CREATE UNIQUE INDEX ON authors (user_nickname, forum_slug);
+
 
 CREATE UNLOGGED TABLE posts (
     id SERIAL NOT NULL PRIMARY KEY,
@@ -77,6 +81,7 @@ CREATE UNIQUE INDEX ON posts(id, thread_id);
 CREATE UNIQUE INDEX ON posts(id, author_nickname);
 CREATE INDEX ON posts(thread_id, path_of_nesting, id);
 CREATE INDEX ON posts(thread_id, id);
+
 
 CREATE UNLOGGED TABLE votes (
     vote INTEGER NOT NULL,
@@ -182,7 +187,7 @@ CREATE TRIGGER trigger_update_path_of_nesting
     EXECUTE PROCEDURE update_path_of_nesting();
 
 
-CREATE FUNCTION update_user_author_status() RETURNS TRIGGER AS $$
+CREATE FUNCTION update_user_author_status_from_posts() RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO authors (user_nickname, forum_slug)
     VALUES (NEW.author_nickname, NEW.forum_slug)
@@ -195,10 +200,19 @@ CREATE TRIGGER trigger_posts_update_user_author_status
     AFTER INSERT
     ON posts
     FOR EACH ROW
-    EXECUTE PROCEDURE update_user_author_status();
+    EXECUTE PROCEDURE update_user_author_status_from_posts();
+
+CREATE FUNCTION update_user_author_status_from_threads() RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO authors (user_nickname, forum_slug)
+    VALUES (NEW.author_nickname, NEW.forum_slug)
+        ON CONFLICT DO NOTHING;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_threads_update_user_author_status
     AFTER INSERT
     ON threads
     FOR EACH ROW
-    EXECUTE PROCEDURE update_user_author_status();
+    EXECUTE PROCEDURE update_user_author_status_from_threads();
